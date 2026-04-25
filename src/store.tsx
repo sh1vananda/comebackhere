@@ -23,7 +23,7 @@ export const StoreContext = createContext<StoreContextType | undefined>(
   undefined,
 );
 
-const STORAGE_KEY = "picklejuice_state";
+const STORAGE_KEY = "comebackhere_state";
 
 const initialState: AppState = {
   routines: DEFAULT_ROUTINES,
