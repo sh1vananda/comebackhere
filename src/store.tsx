@@ -37,6 +37,58 @@ const initialState: AppState = {
   proteinTarget: 150,
 };
 
+function getDayKey(timestamp: number) {
+  return new Date(timestamp).toDateString();
+}
+
+function computeStreakFromHistory(history: CompletedSession[]) {
+  if (history.length === 0) {
+    return { streak: 0, bestStreak: 0, lastWorkoutDate: null as string | null };
+  }
+
+  const uniqueDays = Array.from(
+    new Set(history.map((session) => getDayKey(session.endTime))),
+  ).map((day) => new Date(day));
+
+  uniqueDays.sort((a, b) => b.getTime() - a.getTime());
+
+  let streak = 1;
+  for (let i = 1; i < uniqueDays.length; i += 1) {
+    const prev = uniqueDays[i - 1];
+    const curr = uniqueDays[i];
+    const diffDays = Math.round(
+      (prev.getTime() - curr.getTime()) / (24 * 60 * 60 * 1000),
+    );
+    if (diffDays === 1) {
+      streak += 1;
+    } else {
+      break;
+    }
+  }
+
+  let bestStreak = 1;
+  let run = 1;
+  for (let i = 1; i < uniqueDays.length; i += 1) {
+    const prev = uniqueDays[i - 1];
+    const curr = uniqueDays[i];
+    const diffDays = Math.round(
+      (prev.getTime() - curr.getTime()) / (24 * 60 * 60 * 1000),
+    );
+    if (diffDays === 1) {
+      run += 1;
+      bestStreak = Math.max(bestStreak, run);
+    } else {
+      run = 1;
+    }
+  }
+
+  return {
+    streak,
+    bestStreak,
+    lastWorkoutDate: uniqueDays[0].toDateString(),
+  };
+}
+
 function loadState(): AppState {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -107,23 +159,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         case "END_SESSION":
           return { ...prev, activeSession: null };
         case "FINISH_SESSION":
-          // Update streak
-          const now = new Date();
-          const todayStr = now.toDateString();
-          let newStreak = prev.streak;
-          let newBest = prev.bestStreak;
-
-          if (prev.lastWorkoutDate !== todayStr) {
-            // Check if last workout was yesterday
-            const yesterday = new Date(now);
-            yesterday.setDate(now.getDate() - 1);
-            if (prev.lastWorkoutDate === yesterday.toDateString()) {
-              newStreak += 1;
-            } else {
-              newStreak = 1;
-            }
-            if (newStreak > newBest) newBest = newStreak;
-          }
+          const newHistory = [action.payload, ...prev.history];
+          const streakMetrics = computeStreakFromHistory(newHistory);
 
           // Update histories inside routines to reflect new weights/reps
           const newRoutines = prev.routines.map((r) => {
@@ -163,12 +200,71 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           return {
             ...prev,
             activeSession: null,
-            history: [action.payload, ...prev.history],
-            streak: newStreak,
-            bestStreak: newBest,
-            lastWorkoutDate: todayStr,
+            history: newHistory,
+            streak: streakMetrics.streak,
+            bestStreak: Math.max(prev.bestStreak, streakMetrics.bestStreak),
+            lastWorkoutDate: streakMetrics.lastWorkoutDate,
             routines: newRoutines,
           };
+        case "DELETE_HISTORY_SESSION": {
+          const payload = action.payload || {};
+          const sessionToDelete = prev.history.find((session) => {
+            if (payload.id && session.id === payload.id) return true;
+            return (
+              session.endTime === payload.endTime &&
+              session.routineId === payload.routineId
+            );
+          });
+          if (!sessionToDelete) return prev;
+
+          const history = prev.history.filter(
+            (session) => session !== sessionToDelete,
+          );
+          const streakMetrics = computeStreakFromHistory(history);
+
+          const routines = prev.routines.map((routine) => {
+            if (routine.id !== sessionToDelete.routineId) return routine;
+
+            const exercises = routine.exercises.map((exercise) => {
+              const deletedSessionExercise = sessionToDelete.exercises.find(
+                (sessionExercise) => sessionExercise.id === exercise.id,
+              );
+              if (!deletedSessionExercise) return exercise;
+
+              const hadLoggedSets = deletedSessionExercise.loggedSets.some(
+                Boolean,
+              );
+              if (!hadLoggedSets) return exercise;
+
+              const historyWithoutDeletedSession = (exercise.history || []).filter(
+                (entry) => entry.date !== sessionToDelete.endTime,
+              );
+              const nextTarget =
+                historyWithoutDeletedSession.length > 0
+                  ? historyWithoutDeletedSession[
+                      historyWithoutDeletedSession.length - 1
+                    ].kg
+                  : exercise.targetKg;
+
+              return {
+                ...exercise,
+                history: historyWithoutDeletedSession,
+                targetKg: nextTarget,
+              };
+            });
+
+            return { ...routine, exercises };
+          });
+
+          return {
+            ...prev,
+            history,
+            streak: streakMetrics.streak,
+            bestStreak: streakMetrics.bestStreak,
+            lastWorkoutDate: streakMetrics.lastWorkoutDate,
+            routines,
+          };
+        }
         default:
           return prev;
       }

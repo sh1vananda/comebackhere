@@ -1,8 +1,8 @@
 import { useAppStore } from '../store';
-import { Dumbbell, Calendar, ArrowRight } from 'lucide-react';
+import { Dumbbell, Calendar, Trash2 } from 'lucide-react';
 
 export function History({ onNavigate }: { onNavigate: (view: string) => void }) {
-  const { state } = useAppStore();
+  const { state, dispatch } = useAppStore();
   const history = state.history;
 
   return (
@@ -32,7 +32,8 @@ export function History({ onNavigate }: { onNavigate: (view: string) => void }) 
                    {s.prs > 0 && <span className="text-[10px] uppercase font-bold tracking-widest bg-accent/10 border border-accent/20 text-accent px-2.5 py-1 rounded-full">+{s.prs} PR</span>}
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-panel flex gap-4">
+                <div className="mt-4 pt-4 border-t border-panel flex items-end justify-between gap-4">
+                  <div className="flex gap-4">
                    <div className="flex flex-col">
                       <span className="text-[10px] text-dim uppercase tracking-wider font-semibold">Volume</span>
                       <span className="font-mono text-tx">{s.totalVolume.toLocaleString()} <span className="text-xs text-muted">kg</span></span>
@@ -41,6 +42,21 @@ export function History({ onNavigate }: { onNavigate: (view: string) => void }) 
                       <span className="text-[10px] text-dim uppercase tracking-wider font-semibold">Sets</span>
                       <span className="font-mono text-tx">{s.exercises.reduce((a,e)=>a+e.loggedSets.filter(Boolean).length,0)} <span className="text-xs text-muted">done</span></span>
                    </div>
+                  </div>
+
+                <button
+                  type="button"
+                  aria-label="Delete history entry"
+                  onClick={() =>
+                    dispatch({
+                      type: 'DELETE_HISTORY_SESSION',
+                      payload: { id: s.id, endTime: s.endTime, routineId: s.routineId },
+                    })
+                  }
+                  className="h-8 w-8 rounded-lg border border-danger/30 bg-danger/10 text-danger hover:bg-danger/20 active:scale-95 transition-all flex items-center justify-center"
+                >
+                  <Trash2 size={14} />
+                </button>
                 </div>
              </div>
            ))
