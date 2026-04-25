@@ -20,6 +20,7 @@ export function Home({ onNavigate }: { onNavigate: (view: string, payload?: any)
       routineId: routine.id,
       routineName: routine.name,
       startTime: Date.now(),
+      hasStarted: false,
       exercises: routine.exercises.map((ex: any) => ({
         ...ex,
         loggedSets: Array(ex.sets).fill(null),
@@ -76,6 +77,7 @@ export function Home({ onNavigate }: { onNavigate: (view: string, payload?: any)
              <div>
                <div className="text-[10px] uppercase tracking-[0.2em] text-[#798686] font-bold mb-1.5">In Progress</div>
                <div className="text-lg font-serif italic text-tx">{state.activeSession.routineName}</div>
+               <div className="text-xs text-muted mt-1">{state.activeSession.hasStarted === false ? 'Preview mode' : 'Session running'}</div>
              </div>
              <button 
                 onClick={() => onNavigate('session')}

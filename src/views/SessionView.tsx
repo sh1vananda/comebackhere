@@ -28,16 +28,42 @@ export function SessionView({ onEnd }: { onEnd: () => void }) {
   }, [isResting, restSeconds]);
 
   if (!session) return null;
+  const sessionStarted = session.hasStarted ?? true;
 
   const activeEx = session.exercises[exIdx];
+  const doneSets = session.exercises.reduce((a,e) => a + e.loggedSets.filter(Boolean).length, 0);
+  const totalSets = session.exercises.reduce((a,e) => a + e.sets, 0);
+
+  const startSessionTracking = () => {
+    dispatch({
+      type: 'UPDATE_SESSION',
+      payload: {
+        ...session,
+        hasStarted: true,
+        startTime: Date.now(),
+      },
+    });
+  };
 
   const handleEndSessionEarly = () => {
+    if (doneSets === 0) {
+      dispatch({ type: 'END_SESSION' });
+      onEnd();
+      return;
+    }
+
     if(confirm("End session right now? Unlogged sets will be ignored.")) {
-       finishSession();
+      finishSession();
     }
   };
 
   const finishSession = () => {
+     if (doneSets === 0) {
+        dispatch({ type: 'END_SESSION' });
+        onEnd();
+        return;
+     }
+
      const elapsed = Math.floor((Date.now() - session.startTime) / 60000);
      let vol = 0;
      session.exercises.forEach(ex => {
@@ -108,11 +134,49 @@ export function SessionView({ onEnd }: { onEnd: () => void }) {
     return `${m}:${sec < 10 ? '0':''}${sec}`;
   };
 
-  // Stats
-  const totalSets = session.exercises.reduce((a,e) => a + e.sets, 0);
-  const doneSets = session.exercises.reduce((a,e) => a + e.loggedSets.filter(Boolean).length, 0);
   const pct = totalSets ? doneSets / totalSets : 0;
   const isPR = activeEx?.history?.length > 0 && activeEx.targetKg > Math.max(...activeEx.history.map(h=>h.kg));
+
+  if (!sessionStarted) {
+    return (
+      <div className="flex flex-col gap-5 animate-in fade-in duration-300 pb-2 flex-1">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-muted uppercase tracking-widest font-bold mb-1">Preview</span>
+            <h2 className="text-3xl font-serif italic">{session.routineName}</h2>
+          </div>
+          <button onClick={handleEndSessionEarly} className="text-[10px] text-danger border border-danger/30 bg-danger/10 px-3 py-1.5 rounded-lg uppercase tracking-widest font-bold">Close</button>
+        </div>
+
+        <div className="bg-surface border border-panel rounded-[28px] p-6 shadow-sm">
+          <div className="text-xs text-muted font-mono mb-4">
+            {session.exercises.length} exercises · {totalSets} total sets
+          </div>
+          <button
+            onClick={startSessionTracking}
+            className="w-full bg-accent text-bg font-bold text-lg py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-[0_0_20px_rgba(90,90,64,0.15)]"
+          >
+            Start Session
+          </button>
+        </div>
+
+        <div className="flex flex-col bg-surface border border-panel rounded-3xl p-4 shadow-sm">
+          {session.exercises.map((ex, i) => (
+            <div key={ex.id} className="flex items-center gap-4 py-3 border-b border-panel last:border-none">
+              <div className="w-6 h-6 rounded-[8px] border-[1.5px] border-panel text-transparent flex items-center justify-center">
+                <Check size={12} strokeWidth={3} />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-tx">{ex.name}</div>
+                <div className="text-[10px] font-mono text-muted mt-1">{ex.sets}×{ex.reps}{ex.isTime ? 's' : ''} · {ex.targetKg}kg</div>
+              </div>
+              <span className="text-[10px] uppercase tracking-widest font-bold text-dim">#{i + 1}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (isResting) {
      const nextEx = session.exercises[exIdx];

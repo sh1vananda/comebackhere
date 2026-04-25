@@ -35,6 +35,7 @@ export type Session = {
   routineId: string;
   routineName: string;
   startTime: number;
+  hasStarted?: boolean;
   exercises: SessionExercise[];
 };
 

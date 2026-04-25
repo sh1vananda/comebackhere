@@ -159,6 +159,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         case "END_SESSION":
           return { ...prev, activeSession: null };
         case "FINISH_SESSION":
+          if (
+            !action.payload.exercises.some((exercise: any) =>
+              exercise.loggedSets.some((setLog: any) => setLog !== null),
+            )
+          ) {
+            return { ...prev, activeSession: null };
+          }
+
           const newHistory = [action.payload, ...prev.history];
           const streakMetrics = computeStreakFromHistory(newHistory);
 
