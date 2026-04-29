@@ -94,7 +94,7 @@ export function Home({ onNavigate }: { onNavigate: (view: string, payload?: any)
            <h3 className="font-serif italic text-2xl">Today's Schedule</h3>
            <span className="text-[10px] text-muted uppercase tracking-widest font-bold">{todaysPlans.length} Plans</span>
         </div>
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {todaysPlans.length === 0 ? (
              <div className="text-sm text-dim p-4 text-center">
               Rest day. You have no workouts scheduled.
@@ -138,7 +138,7 @@ export function Home({ onNavigate }: { onNavigate: (view: string, payload?: any)
            <h3 className="font-serif italic text-3xl tracking-tight">Other Plans</h3>
            <button onClick={() => onNavigate('plans')} className="text-[10px] uppercase tracking-[0.2em] text-[#8D8D86] font-bold hover:text-tx transition-colors">Manage</button>
         </div>
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
            {otherPlans.length === 0 && todaysPlans.length === 0 && (
              <button onClick={() => onNavigate('plan_editor')} className="text-sm border border-panel-dark rounded-2xl border-dashed p-6 text-center text-muted hover:text-tx hover:border-muted flex flex-col items-center gap-2 transition-colors">
                <span className="text-2xl">+</span>

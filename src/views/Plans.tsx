@@ -19,9 +19,9 @@ export function Plans({ onNavigate }: { onNavigate: (view: string, payload?: any
         </button>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="columns-1 md:columns-2 lg:columns-3 gap-3">
         {routines.map((r) => (
-          <div key={r.id} className="bg-surface border border-panel rounded-2xl p-5 shadow-sm">
+          <div key={r.id} className="bg-surface border border-panel rounded-2xl p-5 shadow-sm break-inside-avoid mb-3">
              <div className="flex justify-between items-start mb-4">
                 <div>
                    <h2 className="font-serif italic text-2xl">{r.name}</h2>

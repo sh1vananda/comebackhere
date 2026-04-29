@@ -27,7 +27,7 @@ export default function App() {
   }
 
   return (
-    <div className="max-w-md mx-auto h-[100dvh] relative flex flex-col bg-bg overflow-hidden shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] sm:border-x sm:border-panel">
+    <div className="w-full max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto h-[100dvh] relative flex flex-col bg-bg overflow-hidden shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] sm:border-x sm:border-panel">
       
       {/* App content area */}
       <div className="flex-1 w-full overflow-y-auto overscroll-y-contain pb-[env(safe-area-inset-bottom)]">

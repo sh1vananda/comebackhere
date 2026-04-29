@@ -11,7 +11,7 @@ export function History({ onNavigate }: { onNavigate: (view: string) => void }) 
         <h1 className="text-4xl font-serif italic tracking-tight">History</h1>
       </div>
 
-      <div className="flex flex-col gap-3 mt-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-2 items-start">
         {history.length === 0 ? (
            <div className="text-center p-8 border border-panel border-dashed rounded-2xl">
               <Dumbbell className="mx-auto text-panel mb-2" size={32} />

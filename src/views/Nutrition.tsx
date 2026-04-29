@@ -123,7 +123,7 @@ export function Nutrition() {
       </div>
 
       {/* Food List */}
-      <div className="flex flex-col gap-3 mt-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-2 items-start">
          {foods.length === 0 ? (
             <div className="text-center p-8 border border-panel border-dashed rounded-[24px]">
                <Beef className="mx-auto text-panel mb-3" size={32} />
