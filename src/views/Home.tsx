@@ -1,5 +1,5 @@
 import { useAppStore } from '../store';
-import { Play, ChevronRight, Flame } from 'lucide-react';
+import { Play, ChevronRight, Flame, LogOut } from 'lucide-react';
 
 export function Home({ onNavigate }: { onNavigate: (view: string, payload?: any) => void }) {
   const { state, dispatch } = useAppStore();
@@ -185,6 +185,18 @@ export function Home({ onNavigate }: { onNavigate: (view: string, payload?: any)
         </div>
       )}
       
+      <div className="pt-6 pb-2 mt-4 border-t border-panel/50 flex justify-center">
+        <button 
+          onClick={() => {
+            import('../lib/supabase').then(({ supabase }) => supabase.auth.signOut());
+          }}
+          className="text-xs text-muted hover:text-tx transition-colors font-medium flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-surface2"
+        >
+          <LogOut size={14} />
+          Sign Out
+        </button>
+      </div>
+
       <div className="h-4" />
     </div>
   );

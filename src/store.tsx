@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
 import { CompletedSession, Routine, Session, FoodItem } from "./types";
 import { DEFAULT_ROUTINES } from "./lib/defaults";
+import { supabase } from "./lib/supabase";
 
 type AppState = {
   routines: Routine[];
@@ -12,6 +13,8 @@ type AppState = {
   isFirstLoad: boolean;
   foodLogs: Record<string, FoodItem[]>;
   proteinTarget: number;
+  user: any | null;
+  isLoadingData: boolean;
 };
 
 type StoreContextType = {
@@ -35,6 +38,8 @@ const initialState: AppState = {
   isFirstLoad: true,
   foodLogs: {},
   proteinTarget: 150,
+  user: null,
+  isLoadingData: false,
 };
 
 function getDayKey(timestamp: number) {
@@ -108,14 +113,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!state.isFirstLoad) {
+    if (!state.isFirstLoad && state.user && !state.isLoadingData) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const { user, isLoadingData, isFirstLoad, ...appStateToSave } = state;
+      supabase.from("user_data").upsert({ 
+        id: user.id, 
+        app_state: appStateToSave,
+        updated_at: new Date().toISOString()
+      }).then(({ error }) => {
+        if (error) console.error("Failed to sync to Supabase:", error);
+      });
+    } else if (!state.isFirstLoad && !state.user && !state.isLoadingData) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
   }, [state]);
 
-  const dispatch = (action: any) => {
+  const dispatch = useCallback((action: any) => {
     setState((prev) => {
       switch (action.type) {
+        case "SET_USER":
+          return { ...prev, user: action.payload };
+        case "LOAD_DATA":
+          return { ...prev, ...action.payload, isLoadingData: false, isFirstLoad: false };
+        case "LOGOUT":
+          return { ...initialState, isFirstLoad: false };
         case "ADD_ROUTINE":
           return { ...prev, routines: [...prev.routines, action.payload] };
         case "UPDATE_ROUTINE":
@@ -172,7 +193,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
           // Update histories inside routines to reflect new weights/reps
           const newRoutines = prev.routines.map((r) => {
-            // Assuming session exercises map well based on ID or Name. Since we edit plans directly, exercises have IDs.
             const updatedExercises = r.exercises.map((ex) => {
               const sessionEx = action.payload.exercises.find(
                 (e: any) => e.id === ex.id,
@@ -277,10 +297,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           return prev;
       }
     });
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({ state, dispatch }), [state, dispatch]);
 
   return (
-    <StoreContext.Provider value={{ state, dispatch }}>
+    <StoreContext.Provider value={contextValue}>
       {children}
     </StoreContext.Provider>
   );
