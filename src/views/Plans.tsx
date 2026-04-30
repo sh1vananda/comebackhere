@@ -155,27 +155,27 @@ export function Plans({ onNavigate }: { onNavigate: (view: string, payload?: any
 
   return (
     <div className="flex flex-col gap-6 animate-in slide-in-from-right-2 duration-300 h-full pb-16">
-      <div className="flex items-center justify-between pb-4 border-b border-panel flex-wrap gap-4">
-        <h1 className="text-4xl font-serif italic tracking-tight">My Plans</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between pb-4 border-b border-panel">
+        <h1 className="text-3xl sm:text-4xl font-serif italic tracking-tight">My Plans</h1>
+        <div className="flex items-center gap-1.5 sm:gap-2">
            <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleImportArray} />
-           <button onClick={() => fileInputRef.current?.click()} className="p-2 text-muted hover:text-tx rounded-lg bg-surface2 border border-panel" title="Import Plans">
+           <button onClick={() => fileInputRef.current?.click()} className="p-1.5 sm:p-2 text-muted hover:text-tx rounded-lg bg-surface2 border border-panel" title="Import Plans">
               <Upload size={16} />
            </button>
-           <button onClick={handleExportAll} className="p-2 text-muted hover:text-tx rounded-lg bg-surface2 border border-panel" title="Export All Plans">
+           <button onClick={handleExportAll} className="p-1.5 sm:p-2 text-muted hover:text-tx rounded-lg bg-surface2 border border-panel" title="Export All Plans">
               <Download size={16} />
            </button>
-           <button onClick={toggleMode} className="p-2 text-muted hover:text-tx rounded-lg bg-surface2 border border-panel ml-2 mr-2" title={isJsonMode ? "Switch to GUI" : "Switch to JSON"}>
+           <button onClick={toggleMode} className="p-1.5 sm:p-2 text-muted hover:text-tx rounded-lg bg-surface2 border border-panel sm:ml-2 sm:mr-2" title={isJsonMode ? "Switch to GUI" : "Switch to JSON"}>
               {isJsonMode ? <LayoutTemplate size={16} /> : <Code size={16} />}
            </button>
            
            {isJsonMode ? (
-              <button onClick={handleSave} className="bg-accent text-bg px-4 py-2 rounded-2xl text-sm font-bold flex items-center gap-1 active:scale-95 transition-transform">
+              <button onClick={handleSave} className="bg-accent text-bg px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-sm font-bold flex items-center gap-1 active:scale-95 transition-transform ml-1 sm:ml-0">
                 Save
               </button>
            ) : (
-              <button onClick={() => onNavigate('plan_editor')} className="bg-accent text-bg px-4 py-2 rounded-2xl text-sm font-bold flex items-center gap-1 active:scale-95 transition-transform">
-                <Plus size={16} /> New
+              <button onClick={() => onNavigate('plan_editor')} className="bg-accent text-bg px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-sm font-bold flex items-center gap-1 active:scale-95 transition-transform ml-1 sm:ml-0">
+                <Plus size={16} /> <span className="hidden sm:inline">New</span>
               </button>
            )}
         </div>
