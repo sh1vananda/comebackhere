@@ -137,6 +137,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           return { ...prev, ...action.payload, isLoadingData: false, isFirstLoad: false };
         case "LOGOUT":
           return { ...initialState, isFirstLoad: false };
+        case "SET_ROUTINES":
+          return { ...prev, routines: action.payload };
         case "ADD_ROUTINE":
           return { ...prev, routines: [...prev.routines, action.payload] };
         case "UPDATE_ROUTINE":

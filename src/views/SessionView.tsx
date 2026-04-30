@@ -115,10 +115,10 @@ export function SessionView({ onEnd }: { onEnd: () => void }) {
        }
        setExIdx(nextExIdx);
        setSetIdx(0);
-       startRest(120); // 2 min between exercises
+       startRest(ex.restTime ? ex.restTime + 30 : 120); // 2 min between exercises or specific rest + 30s
     } else {
        setSetIdx(nextSetIdx);
-       startRest(90); // 90s between sets
+       startRest(ex.restTime || 90); // 90s between sets or specific rest
     }
   };
 
@@ -249,8 +249,18 @@ export function SessionView({ onEnd }: { onEnd: () => void }) {
          <h2 className="text-3xl font-serif italic mb-1 pr-16">{activeEx.name}</h2>
          <div className="text-muted font-mono text-xs">
             {activeEx.sets} sets × {activeEx.reps} {activeEx.isTime ? 'sec' : 'reps'}
-            {activeEx.history?.length > 0 && <span className="ml-2 pl-2 border-l border-panel text-dim">last: ${activeEx.history[activeEx.history.length-1].kg}kg </span>}
+            {activeEx.history?.length > 0 && <span className="ml-2 pl-2 border-l border-panel text-dim">last: {activeEx.history[activeEx.history.length-1].kg}kg </span>}
          </div>
+
+         {(activeEx.tempo || activeEx.notes || activeEx.restTime) && (
+            <div className="mt-3 flex flex-col gap-1.5 border-t border-panel/50 pt-3">
+               <div className="flex gap-4">
+                  {activeEx.tempo && <span className="text-[10px] text-accent font-mono font-bold uppercase tracking-widest">Tempo: {activeEx.tempo}</span>}
+                  {activeEx.restTime && <span className="text-[10px] text-dim font-mono font-bold uppercase tracking-widest">Rest: {activeEx.restTime}s</span>}
+               </div>
+               {activeEx.notes && <span className="text-xs text-dim italic border-l-[1.5px] border-panel pl-2 leading-snug">{activeEx.notes}</span>}
+            </div>
+         )}
 
          <div className="flex items-center justify-center gap-6 mt-8 mb-6">
             <button onClick={() => adjustWeight(-2.5)} className="w-14 h-14 rounded-full bg-surface2 border border-panel flex items-center justify-center active:bg-panel transition-colors active:scale-95 touch-manipulation">

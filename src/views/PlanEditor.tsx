@@ -47,6 +47,9 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
       reps: 10,
       targetKg: 20,
       isTime: false,
+      tempo: '',
+      notes: '',
+      restTime: 90,
       history: []
     };
     setExercises([...exercises, newEx]);
@@ -309,6 +312,37 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
                               value={ex.targetKg}
                               onChange={(e) => updateExercise(ex.id, 'targetKg', parseFloat(e.target.value))}
                               className="w-full bg-surface2 border border-panel rounded-lg py-2 text-center font-mono text-accent focus:outline-none focus:border-info"
+                           />
+                        </div>
+                     </div>
+                     <div className="pl-6 flex flex-col sm:flex-row gap-4 mt-2">
+                        <div className="flex-[0.4] flex flex-col">
+                           <label className="text-[10px] text-muted mb-1 font-mono uppercase">Rest (s)</label>
+                           <input 
+                              type="number" min="0" step="15"
+                              value={ex.restTime || ''}
+                              onChange={(e) => updateExercise(ex.id, 'restTime', parseInt(e.target.value) || 0)}
+                              className="w-full bg-surface2 border border-panel rounded-lg py-2 px-3 text-sm font-mono focus:outline-none focus:border-info"
+                           />
+                        </div>
+                        <div className="flex-[0.4] flex flex-col">
+                           <label className="text-[10px] text-muted mb-1 font-mono uppercase">Tempo</label>
+                           <input 
+                              type="text"
+                              placeholder="e.g. 1-1-2"
+                              value={ex.tempo || ''}
+                              onChange={(e) => updateExercise(ex.id, 'tempo', e.target.value)}
+                              className="w-full bg-surface2 border border-panel rounded-lg py-2 px-3 text-sm font-mono focus:outline-none focus:border-info"
+                           />
+                        </div>
+                        <div className="flex-1 flex flex-col">
+                           <label className="text-[10px] text-muted mb-1 font-mono uppercase">Notes</label>
+                           <input 
+                              type="text"
+                              placeholder="e.g. Rotate wide/narrow grips"
+                              value={ex.notes || ''}
+                              onChange={(e) => updateExercise(ex.id, 'notes', e.target.value)}
+                              className="w-full bg-surface2 border border-panel rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-info"
                            />
                         </div>
                      </div>

@@ -11,6 +11,9 @@ export type ExerciseDefinition = {
   reps: number;
   targetKg: number;
   isTime?: boolean;
+  tempo?: string;
+  notes?: string;
+  restTime?: number;
   history: ExerciseHistory[];
 };
 
