@@ -21,6 +21,8 @@ export default function App() {
       if (session) {
         dispatch({ type: 'SET_USER', payload: session.user });
         loadSupabaseData(session.user.id);
+      } else {
+        dispatch({ type: 'LOGOUT' });
       }
       setAuthLoading(false);
     });
@@ -39,22 +41,74 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadSupabaseData = async (userId: string) => {
-    const { data, error } = await supabase.from('user_data').select('app_state').eq('id', userId).single();
-    if (data && data.app_state && Object.keys(data.app_state).length > 0) {
-      dispatch({ type: 'LOAD_DATA', payload: data.app_state });
-    } else {
-      // Migrate local data to cloud if it exists
-      const saved = localStorage.getItem('comebackhere_state');
-      if (saved) {
-         try {
-           const localData = JSON.parse(saved);
-           dispatch({ type: 'LOAD_DATA', payload: localData });
-         } catch(e) {
-           dispatch({ type: 'LOAD_DATA', payload: {} });
-         }
+  const loadSupabaseData = async (userId: string, retryCount = 0) => {
+    try {
+      const { data, error } = await supabase.from('user_data').select('app_state').eq('id', userId).single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No remote data exists yet - safe to perform first-time setup or migrate local state.
+          const saved = localStorage.getItem('comebackhere_state');
+          if (saved) {
+             try {
+               const localData = JSON.parse(saved);
+               dispatch({ type: 'LOAD_DATA', payload: localData });
+             } catch(e) {
+               dispatch({ type: 'LOAD_DATA', payload: {} });
+             }
+          } else {
+             dispatch({ type: 'LOAD_DATA', payload: {} });
+          }
+          return;
+        }
+
+        // Other database error (e.g. database restarting, offline, rate limited, connection issue)
+        console.warn(`Supabase load failed (attempt ${retryCount + 1}):`, error.message);
+        if (retryCount < 5) {
+          setTimeout(() => {
+            loadSupabaseData(userId, retryCount + 1);
+          }, 3000);
+        } else {
+          // Fall back to offline mode so we load local storage but NEVER overwrite the DB!
+          console.error("Supabase could not be reached after 5 attempts. Switching to offline mode.");
+          const saved = localStorage.getItem('comebackhere_state');
+          if (saved) {
+            try {
+              const localData = JSON.parse(saved);
+              dispatch({ type: 'LOAD_DATA_OFFLINE', payload: localData });
+            } catch(e) {
+              dispatch({ type: 'LOAD_DATA_OFFLINE', payload: {} });
+            }
+          } else {
+            dispatch({ type: 'LOAD_DATA_OFFLINE', payload: {} });
+          }
+        }
+        return;
+      }
+
+      if (data && data.app_state && Object.keys(data.app_state).length > 0) {
+        dispatch({ type: 'LOAD_DATA', payload: data.app_state });
       } else {
-         dispatch({ type: 'LOAD_DATA', payload: {} });
+        dispatch({ type: 'LOAD_DATA', payload: {} });
+      }
+    } catch (err) {
+      console.error("Unexpected error in loadSupabaseData:", err);
+      if (retryCount < 5) {
+        setTimeout(() => {
+          loadSupabaseData(userId, retryCount + 1);
+        }, 3000);
+      } else {
+        const saved = localStorage.getItem('comebackhere_state');
+        if (saved) {
+          try {
+            const localData = JSON.parse(saved);
+            dispatch({ type: 'LOAD_DATA_OFFLINE', payload: localData });
+          } catch(e) {
+            dispatch({ type: 'LOAD_DATA_OFFLINE', payload: {} });
+          }
+        } else {
+          dispatch({ type: 'LOAD_DATA_OFFLINE', payload: {} });
+        }
       }
     }
   };
@@ -85,18 +139,18 @@ export default function App() {
 
   if (!state.user) {
     return (
-      <div className="w-full max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto h-[100dvh] relative flex flex-col bg-bg overflow-hidden shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] sm:border-x sm:border-panel">
+      <div className="w-full h-[100dvh] relative flex flex-col bg-bg overflow-hidden">
         <Auth />
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto h-[100dvh] relative flex flex-col bg-bg overflow-hidden shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] sm:border-x sm:border-panel">
+    <div className="w-full h-[100dvh] relative flex flex-col bg-bg overflow-hidden">
       
       {/* App content area */}
       <div className="flex-1 w-full overflow-y-auto overscroll-y-contain pb-[env(safe-area-inset-bottom)]">
-         <div className="px-6 pt-8 pb-32 min-h-full flex flex-col">
+         <div className="px-6 pt-8 pb-32 min-h-full flex flex-col w-full max-w-6xl mx-auto">
           {renderedView === 'home' && <Home onNavigate={navigate} />}
           {renderedView === 'plans' && <Plans onNavigate={navigate} />}
           {renderedView === 'plan_editor' && <PlanEditor routineId={navPayload?.routineId} onBack={() => navigate('plans')} />}

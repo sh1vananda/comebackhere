@@ -15,6 +15,7 @@ type AppState = {
   proteinTarget: number;
   user: any | null;
   isLoadingData: boolean;
+  hasLoadedFromSupabase: boolean;
 };
 
 type StoreContextType = {
@@ -40,6 +41,7 @@ const initialState: AppState = {
   proteinTarget: 150,
   user: null,
   isLoadingData: false,
+  hasLoadedFromSupabase: false,
 };
 
 function getDayKey(timestamp: number) {
@@ -97,8 +99,16 @@ function computeStreakFromHistory(history: CompletedSession[]) {
 function loadState(): AppState {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved)
-      return { ...initialState, ...JSON.parse(saved), isFirstLoad: false };
+    if (saved) {
+      return { 
+        ...initialState, 
+        ...JSON.parse(saved), 
+        user: null, 
+        isLoadingData: true, 
+        hasLoadedFromSupabase: false, 
+        isFirstLoad: false 
+      };
+    }
   } catch (e) {
     console.error("Failed to load state", e);
   }
@@ -114,15 +124,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!state.isFirstLoad && state.user && !state.isLoadingData) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      const { user, isLoadingData, isFirstLoad, ...appStateToSave } = state;
-      supabase.from("user_data").upsert({ 
-        id: user.id, 
-        app_state: appStateToSave,
-        updated_at: new Date().toISOString()
-      }).then(({ error }) => {
-        if (error) console.error("Failed to sync to Supabase:", error);
-      });
+      if (state.hasLoadedFromSupabase) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        const { user, isLoadingData, isFirstLoad, hasLoadedFromSupabase, ...appStateToSave } = state;
+        supabase.from("user_data").upsert({ 
+          id: user.id, 
+          app_state: appStateToSave,
+          updated_at: new Date().toISOString()
+        }).then(({ error }) => {
+          if (error) console.error("Failed to sync to Supabase:", error);
+        });
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
     } else if (!state.isFirstLoad && !state.user && !state.isLoadingData) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
@@ -132,11 +146,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => {
       switch (action.type) {
         case "SET_USER":
-          return { ...prev, user: action.payload };
+          return { ...prev, user: action.payload, isLoadingData: true, hasLoadedFromSupabase: false };
         case "LOAD_DATA":
-          return { ...prev, ...action.payload, isLoadingData: false, isFirstLoad: false };
+          return { ...prev, ...action.payload, isLoadingData: false, hasLoadedFromSupabase: true, isFirstLoad: false };
+        case "LOAD_DATA_OFFLINE":
+          return { ...prev, ...action.payload, isLoadingData: false, hasLoadedFromSupabase: false, isFirstLoad: false };
         case "LOGOUT":
-          return { ...initialState, isFirstLoad: false };
+          return { ...initialState, isFirstLoad: false, isLoadingData: false, hasLoadedFromSupabase: false };
         case "SET_ROUTINES":
           return { ...prev, routines: action.payload };
         case "ADD_ROUTINE":

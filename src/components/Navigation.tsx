@@ -28,7 +28,7 @@ export function Navigation({ currentView, onChangeView }: { currentView: string,
 
   return (
     <div className="absolute bottom-0 left-0 right-0 bg-[#F5F5F0]/95 backdrop-blur-md border-t border-panel z-40 pb-[env(safe-area-inset-bottom)]">
-      <div className="flex h-[72px] items-stretch px-2">
+      <div className="flex h-[72px] items-stretch px-2 max-w-6xl mx-auto">
         <NavItem 
           view="home" 
           label="Today" 
