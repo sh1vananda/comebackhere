@@ -102,6 +102,14 @@ export function SessionView({ onEnd }: { onEnd: () => void }) {
     dispatch({ type: 'UPDATE_SESSION', payload: freshSession });
   };
 
+  const switchExercise = (newExIdx: number) => {
+    if (newExIdx === exIdx) return;
+    setExIdx(newExIdx);
+    const ex = session.exercises[newExIdx];
+    const firstUndone = ex.loggedSets.findIndex(s => s === null);
+    setSetIdx(firstUndone === -1 ? 0 : firstUndone);
+  };
+
   const logSet = () => {
     const freshSession = { ...session };
     const ex = freshSession.exercises[exIdx];
@@ -119,18 +127,24 @@ export function SessionView({ onEnd }: { onEnd: () => void }) {
 
     const nextSetIdx = ex.loggedSets.findIndex(s => s === null);
     if (nextSetIdx === -1) {
-       // All sets done for this exercise
-       const nextExIdx = exIdx + 1;
-       if (nextExIdx >= session.exercises.length) {
-         finishSession();
-         return;
+       let nextIncompleteExIdx = session.exercises.findIndex((e, idx) => idx > exIdx && e.loggedSets.some(s => s === null));
+       
+       if (nextIncompleteExIdx === -1) {
+          nextIncompleteExIdx = session.exercises.findIndex(e => e.loggedSets.some(s => s === null));
        }
-       setExIdx(nextExIdx);
-       setSetIdx(0);
-       startRest(ex.restTime ? ex.restTime + 30 : 120); // 2 min between exercises or specific rest + 30s
+
+       if (nextIncompleteExIdx === -1) {
+          finishSession();
+          return;
+       }
+
+       setExIdx(nextIncompleteExIdx);
+       const nextExUndoneSet = session.exercises[nextIncompleteExIdx].loggedSets.findIndex(s => s === null);
+       setSetIdx(nextExUndoneSet === -1 ? 0 : nextExUndoneSet);
+       startRest(ex.restTime ? ex.restTime + 30 : 120);
     } else {
        setSetIdx(nextSetIdx);
-       startRest(ex.restTime || 90); // 90s between sets or specific rest
+       startRest(ex.restTime || 90);
     }
   };
 
@@ -297,14 +311,13 @@ export function SessionView({ onEnd }: { onEnd: () => void }) {
                if (done) mainCls   = "bg-accent/10 border-accent/30 text-accent";
 
                return (
-                  <button 
+                  <div 
                      key={i} 
-                     onClick={() => !done && setSetIdx(i)}
                      className={`flex-1 flex flex-col items-center py-3 rounded-2xl border ${mainCls} transition-all`}
                   >
                      <span className="font-mono text-xl font-bold leading-none mb-1">{done ? '✓' : (active ? activeEx.targetKg : '-')}</span>
                      <span className="text-[10px] uppercase tracking-widest font-bold opacity-60">set {i+1}</span>
-                  </button>
+                  </div>
                )
             })}
          </div>
@@ -326,8 +339,12 @@ export function SessionView({ onEnd }: { onEnd: () => void }) {
                const isActive = i === exIdx;
                
                return (
-                  <div key={ex.id} className={`flex items-center gap-4 py-3 border-b border-panel last:border-none ${isActive ? 'opacity-100' : 'opacity-50'}`}>
-                     <div className={`w-6 h-6 rounded-[8px] border-[1.5px] flex items-center justify-center ${allDone ? 'bg-accent border-accent text-bg' : 'border-panel text-transparent'}`}>
+                  <button 
+                     key={ex.id} 
+                     onClick={() => switchExercise(i)}
+                     className={`w-full text-left flex items-center gap-4 py-3 border-b border-panel last:border-none transition-opacity ${isActive ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
+                  >
+                     <div className={`w-6 h-6 shrink-0 rounded-[8px] border-[1.5px] flex items-center justify-center ${allDone ? 'bg-accent border-accent text-bg' : 'border-panel text-transparent'}`}>
                         <Check size={12} strokeWidth={3} />
                      </div>
                      <div className="flex-1">
@@ -335,7 +352,7 @@ export function SessionView({ onEnd }: { onEnd: () => void }) {
                         <div className="text-[10px] font-mono text-muted mt-1">{ex.sets}×{ex.reps}{ex.isTime ? 's' : ''} · {ex.targetKg}kg</div>
                      </div>
                      {isActive && <span className="bg-panel text-dim text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-full">Current</span>}
-                  </div>
+                  </button>
                )
             })}
          </div>
