@@ -8,6 +8,7 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
   
   const [name, setName] = useState('');
   const [schedule, setSchedule] = useState<number[]>([]);
+  const [isRestDay, setIsRestDay] = useState(false);
   const [exercises, setExercises] = useState<ExerciseDefinition[]>([]);
   
   const [isJsonMode, setIsJsonMode] = useState(false);
@@ -22,6 +23,7 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
       if (routine) {
         setName(routine.name);
         setSchedule(routine.schedule || []);
+        setIsRestDay(routine.isRestDay || false);
         setExercises(routine.exercises);
       }
     }
@@ -59,13 +61,14 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
     if (!isJsonMode) {
       // Strip personal history when viewing JSON to keep it clean for config editing
       const cleanExercises = exercises.map(ex => ({ ...ex, history: [] }));
-      setJsonString(JSON.stringify({ name, schedule, exercises: cleanExercises }, null, 2));
+      setJsonString(JSON.stringify({ name, schedule, isRestDay, exercises: cleanExercises }, null, 2));
       setIsJsonMode(true);
     } else {
       try {
         const parsed = JSON.parse(jsonString);
         setName(parsed.name || 'Untitled Plan');
         setSchedule(parsed.schedule || []);
+        setIsRestDay(parsed.isRestDay || false);
         
         // Merge history back so we don't wipe it out when switching back to GUI
         const mergedExercises = (parsed.exercises || []).map((parsedEx: any) => {
@@ -93,7 +96,7 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
     }
     // Scrub personal lifting history from the exported template
     cleanExercises = cleanExercises.map(ex => ({ ...ex, history: [] }));
-    const exportData = JSON.stringify({ name, schedule, exercises: cleanExercises }, null, 2);
+    const exportData = JSON.stringify({ name, schedule, isRestDay, exercises: cleanExercises }, null, 2);
     
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(exportData);
     const downloadAnchorNode = document.createElement('a');
@@ -119,10 +122,11 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
         
         setName(parsed.name || 'Imported Plan');
         setSchedule(parsed.schedule || []);
+        setIsRestDay(parsed.isRestDay || false);
         setExercises(importedExercises);
         
         if (isJsonMode) {
-           setJsonString(JSON.stringify({ name: parsed.name, schedule: parsed.schedule, exercises: importedExercises }, null, 2));
+           setJsonString(JSON.stringify({ name: parsed.name, schedule: parsed.schedule, isRestDay: parsed.isRestDay, exercises: importedExercises }, null, 2));
         }
       } catch (err) {
         alert("Failed to parse the imported file.");
@@ -135,6 +139,7 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
   const handleSave = () => {
     let finalName = name;
     let finalSchedule = schedule;
+    let finalIsRestDay = isRestDay;
     let finalExercises = exercises;
 
     if (isJsonMode) {
@@ -142,6 +147,7 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
          const parsed = JSON.parse(jsonString);
          finalName = parsed.name || '';
          finalSchedule = parsed.schedule || [];
+         finalIsRestDay = parsed.isRestDay || false;
          
          // Preserve DB history when saving from JSON editor
          finalExercises = (parsed.exercises || []).map((parsedEx: any) => {
@@ -163,6 +169,7 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
        id: routineId || crypto.randomUUID(),
        name: finalName.trim(),
        schedule: finalSchedule,
+       isRestDay: finalIsRestDay,
        exercises: finalExercises
     };
 
@@ -252,7 +259,19 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
                      );
                   })}
                </div>
-            </div>
+
+                <div className="mt-4 flex items-center justify-between bg-surface border border-panel rounded-2xl p-4 cursor-pointer hover:bg-surface2 transition-colors" onClick={() => setIsRestDay(!isRestDay)}>
+                   <div className="flex flex-col">
+                      <span className="font-medium text-tx">Rest Day</span>
+                      <span className="text-[10px] text-muted">Don't break streak on this day.</span>
+                   </div>
+                   <button 
+                      className={`w-12 h-6 rounded-full flex items-center transition-colors px-1 ${isRestDay ? 'bg-accent' : 'bg-panel border border-panel-dark'}`}
+                   >
+                      <div className={`w-4 h-4 rounded-full transition-all transform ${isRestDay ? 'translate-x-6 bg-bg shadow-sm' : 'translate-x-0 bg-dim'}`} />
+                   </button>
+                </div>
+             </div>
          </div>
 
          <hr className="border-panel" />

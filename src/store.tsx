@@ -48,10 +48,14 @@ function getDayKey(timestamp: number) {
   return new Date(timestamp).toDateString();
 }
 
-function computeStreakFromHistory(history: CompletedSession[]) {
+function computeStreakFromHistory(history: CompletedSession[], routines: Routine[]) {
   if (history.length === 0) {
     return { streak: 0, bestStreak: 0, lastWorkoutDate: null as string | null };
   }
+
+  const explicitRestDays = new Set(
+    routines.filter(r => r.isRestDay).flatMap(r => r.schedule || [])
+  );
 
   const uniqueDays = Array.from(
     new Set(history.map((session) => getDayKey(session.endTime))),
@@ -69,7 +73,19 @@ function computeStreakFromHistory(history: CompletedSession[]) {
     if (diffDays === 1) {
       streak += 1;
     } else {
-      break;
+      let allRestDays = true;
+      for (let d = 1; d < diffDays; d++) {
+         const missingDate = new Date(curr.getTime() + d * 24 * 60 * 60 * 1000);
+         if (!explicitRestDays.has(missingDate.getDay())) {
+            allRestDays = false;
+            break;
+         }
+      }
+      if (allRestDays) {
+         streak += diffDays;
+      } else {
+         break;
+      }
     }
   }
 
@@ -85,7 +101,20 @@ function computeStreakFromHistory(history: CompletedSession[]) {
       run += 1;
       bestStreak = Math.max(bestStreak, run);
     } else {
-      run = 1;
+      let allRestDays = true;
+      for (let d = 1; d < diffDays; d++) {
+         const missingDate = new Date(curr.getTime() + d * 24 * 60 * 60 * 1000);
+         if (!explicitRestDays.has(missingDate.getDay())) {
+            allRestDays = false;
+            break;
+         }
+      }
+      if (allRestDays) {
+         run += diffDays;
+         bestStreak = Math.max(bestStreak, run);
+      } else {
+         run = 1;
+      }
     }
   }
 
@@ -207,7 +236,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           }
 
           const newHistory = [action.payload, ...prev.history];
-          const streakMetrics = computeStreakFromHistory(newHistory);
+          const streakMetrics = computeStreakFromHistory(newHistory, prev.routines);
 
           // Update histories inside routines to reflect new weights/reps
           const newRoutines = prev.routines.map((r) => {
@@ -266,7 +295,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           const history = prev.history.filter(
             (session) => session !== sessionToDelete,
           );
-          const streakMetrics = computeStreakFromHistory(history);
+          const streakMetrics = computeStreakFromHistory(history, prev.routines);
 
           const routines = prev.routines.map((routine) => {
             if (routine.id !== sessionToDelete.routineId) return routine;

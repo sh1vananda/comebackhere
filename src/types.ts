@@ -22,6 +22,7 @@ export type Routine = {
   name: string;
   exercises: ExerciseDefinition[];
   schedule: number[]; // 0=Sun, 1=Mon, etc.
+  isRestDay?: boolean;
 };
 
 export type SetLog = {
