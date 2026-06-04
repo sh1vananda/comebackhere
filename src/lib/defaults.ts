@@ -27,7 +27,7 @@ export const DEFAULT_ROUTINES: Routine[] = [
         name: 'Incline Dumbbell Press',
         sets: 3,
         reps: 12,
-        targetKg: 24,
+        targetKg: 25,
         history: [],
       },
       {

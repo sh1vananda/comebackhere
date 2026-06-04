@@ -86,7 +86,19 @@ export function SessionView({ onEnd }: { onEnd: () => void }) {
   const adjustWeight = (delta: number) => {
     const freshSession = { ...session };
     const ex = freshSession.exercises[exIdx];
-    ex.targetKg = Math.max(0, ex.targetKg + delta);
+    const step = 2.5;
+    const currentSnapped = Math.round(ex.targetKg / step) * step;
+    let newWeight;
+    if (Math.abs(ex.targetKg - currentSnapped) < 0.01) {
+      newWeight = currentSnapped + delta;
+    } else {
+      if (delta > 0) {
+        newWeight = Math.ceil(ex.targetKg / step) * step;
+      } else {
+        newWeight = Math.floor(ex.targetKg / step) * step;
+      }
+    }
+    ex.targetKg = Math.max(0, newWeight);
     dispatch({ type: 'UPDATE_SESSION', payload: freshSession });
   };
 
