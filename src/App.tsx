@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from './store';
 import { Home } from './views/Home';
 import { Plans } from './views/Plans';
@@ -9,12 +9,14 @@ import { Nutrition } from './views/Nutrition';
 import { Navigation } from './components/Navigation';
 import { Auth } from './views/Auth';
 import { supabase } from './lib/supabase';
+import { DEFAULT_ROUTINES } from './lib/defaults';
 
 export default function App() {
   const { state, dispatch } = useAppStore();
   const [currentView, setCurrentView] = useState('home');
   const [navPayload, setNavPayload] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const loadingUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -34,6 +36,7 @@ export default function App() {
         dispatch({ type: 'SET_USER', payload: session.user });
         loadSupabaseData(session.user.id);
       } else {
+        loadingUserIdRef.current = null;
         dispatch({ type: 'LOGOUT' });
       }
     });
@@ -42,26 +45,17 @@ export default function App() {
   }, []);
 
   const loadSupabaseData = async (userId: string, retryCount = 0) => {
+    if (loadingUserIdRef.current === userId && retryCount === 0) return;
+    loadingUserIdRef.current = userId;
+
     try {
-      const { data, error } = await supabase.from('user_data').select('app_state').eq('id', userId).single();
+      const { data, error } = await supabase
+        .from('user_data')
+        .select('app_state')
+        .eq('id', userId)
+        .maybeSingle();
       
       if (error) {
-        if (error.code === 'PGRST116') {
-          // No remote data exists yet - safe to perform first-time setup or migrate local state.
-          const saved = localStorage.getItem('comebackhere_state');
-          if (saved) {
-             try {
-               const localData = JSON.parse(saved);
-               dispatch({ type: 'LOAD_DATA', payload: localData });
-             } catch(e) {
-               dispatch({ type: 'LOAD_DATA', payload: {} });
-             }
-          } else {
-             dispatch({ type: 'LOAD_DATA', payload: {} });
-          }
-          return;
-        }
-
         // Other database error (e.g. database restarting, offline, rate limited, connection issue)
         console.warn(`Supabase load failed (attempt ${retryCount + 1}):`, error.message);
         if (retryCount < 5) {
@@ -74,8 +68,8 @@ export default function App() {
           const saved = localStorage.getItem('comebackhere_state');
           if (saved) {
             try {
-              const localData = JSON.parse(saved);
-              dispatch({ type: 'LOAD_DATA_OFFLINE', payload: localData });
+              const { user, ...cleanLocalData } = JSON.parse(saved);
+              dispatch({ type: 'LOAD_DATA_OFFLINE', payload: cleanLocalData });
             } catch(e) {
               dispatch({ type: 'LOAD_DATA_OFFLINE', payload: {} });
             }
@@ -86,11 +80,25 @@ export default function App() {
         return;
       }
 
-      if (data && data.app_state && Object.keys(data.app_state).length > 0) {
-        dispatch({ type: 'LOAD_DATA', payload: data.app_state });
-      } else {
-        dispatch({ type: 'LOAD_DATA', payload: {} });
+      // No remote data exists yet - this is a brand new user!
+      if (!data || !data.app_state || Object.keys(data.app_state).length === 0) {
+        dispatch({ 
+          type: 'LOAD_DATA', 
+          payload: {
+            routines: DEFAULT_ROUTINES,
+            history: [],
+            foodLogs: {},
+            streak: 0,
+            bestStreak: 0,
+            lastWorkoutDate: null,
+            proteinTarget: 150,
+          } 
+        });
+        return;
       }
+
+      const { user, ...cleanRemoteData } = data.app_state;
+      dispatch({ type: 'LOAD_DATA', payload: cleanRemoteData });
     } catch (err) {
       console.error("Unexpected error in loadSupabaseData:", err);
       if (retryCount < 5) {
@@ -101,8 +109,8 @@ export default function App() {
         const saved = localStorage.getItem('comebackhere_state');
         if (saved) {
           try {
-            const localData = JSON.parse(saved);
-            dispatch({ type: 'LOAD_DATA_OFFLINE', payload: localData });
+            const { user, ...cleanLocalData } = JSON.parse(saved);
+            dispatch({ type: 'LOAD_DATA_OFFLINE', payload: cleanLocalData });
           } catch(e) {
             dispatch({ type: 'LOAD_DATA_OFFLINE', payload: {} });
           }

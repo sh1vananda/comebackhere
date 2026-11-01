@@ -129,9 +129,11 @@ function loadState(): AppState {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
+      const parsed = JSON.parse(saved);
+      const { user, ...cleanSaved } = parsed || {};
       return { 
         ...initialState, 
-        ...JSON.parse(saved), 
+        ...cleanSaved, 
         user: null, 
         isLoadingData: true, 
         hasLoadedFromSupabase: false, 
@@ -153,9 +155,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!state.isFirstLoad && state.user && !state.isLoadingData) {
+      const { user, isLoadingData, isFirstLoad, hasLoadedFromSupabase, ...appStateToSave } = state;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appStateToSave));
+
       if (state.hasLoadedFromSupabase) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        const { user, isLoadingData, isFirstLoad, hasLoadedFromSupabase, ...appStateToSave } = state;
         supabase.from("user_data").upsert({ 
           id: user.id, 
           app_state: appStateToSave,
@@ -163,11 +166,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }).then(({ error }) => {
           if (error) console.error("Failed to sync to Supabase:", error);
         });
-      } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       }
-    } else if (!state.isFirstLoad && !state.user && !state.isLoadingData) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
   }, [state]);
 
@@ -176,11 +175,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       switch (action.type) {
         case "SET_USER":
           return { ...prev, user: action.payload, isLoadingData: true, hasLoadedFromSupabase: false };
-        case "LOAD_DATA":
-          return { ...prev, ...action.payload, isLoadingData: false, hasLoadedFromSupabase: true, isFirstLoad: false };
-        case "LOAD_DATA_OFFLINE":
-          return { ...prev, ...action.payload, isLoadingData: false, hasLoadedFromSupabase: false, isFirstLoad: false };
+        case "LOAD_DATA": {
+          const { user, isLoadingData, hasLoadedFromSupabase, isFirstLoad, ...restData } = action.payload || {};
+          return { ...prev, ...restData, isLoadingData: false, hasLoadedFromSupabase: true, isFirstLoad: false };
+        }
+        case "LOAD_DATA_OFFLINE": {
+          const { user, isLoadingData, hasLoadedFromSupabase, isFirstLoad, ...restData } = action.payload || {};
+          return { ...prev, ...restData, isLoadingData: false, hasLoadedFromSupabase: false, isFirstLoad: false };
+        }
         case "LOGOUT":
+          try {
+            localStorage.removeItem(STORAGE_KEY);
+          } catch (e) {}
           return { ...initialState, isFirstLoad: false, isLoadingData: false, hasLoadedFromSupabase: false };
         case "SET_ROUTINES":
           return { ...prev, routines: action.payload };
