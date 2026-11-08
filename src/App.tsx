@@ -122,18 +122,19 @@ export default function App() {
   };
 
   const navigate = (view: string, payload?: any) => {
-    if (!document.startViewTransition) {
+    const update = () => {
+      setNavPayload(payload !== undefined ? payload : null);
       setCurrentView(view);
-      setNavPayload(payload);
       window.scrollTo(0, 0);
-      return;
-    }
+    };
 
-    document.startViewTransition(() => {
-      setCurrentView(view);
-      setNavPayload(payload);
-      window.scrollTo(0, 0);
-    });
+    if (document.startViewTransition) {
+      document.startViewTransition(() => {
+        update();
+      });
+    } else {
+      update();
+    }
   };
 
   let renderedView = currentView;
@@ -161,7 +162,13 @@ export default function App() {
          <div className="px-6 pt-8 pb-32 min-h-full flex flex-col w-full max-w-6xl mx-auto">
           {renderedView === 'home' && <Home onNavigate={navigate} />}
           {renderedView === 'plans' && <Plans onNavigate={navigate} />}
-          {renderedView === 'plan_editor' && <PlanEditor routineId={navPayload?.routineId} onBack={() => navigate('plans')} />}
+          {renderedView === 'plan_editor' && (
+            <PlanEditor 
+              key={navPayload?.routineId || (typeof navPayload === 'string' ? navPayload : 'new')}
+              routineId={navPayload?.routineId || (typeof navPayload === 'string' ? navPayload : undefined)} 
+              onBack={() => navigate('plans')} 
+            />
+          )}
           {renderedView === 'nutrition' && <Nutrition />}
           {renderedView === 'history' && <History onNavigate={navigate} />}
           {renderedView === 'session' && <SessionView onEnd={() => navigate('home')} />}

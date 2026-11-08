@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAppStore } from '../store';
 import { ArrowLeft, Trash2, Plus, Download, Upload, Code, LayoutTemplate } from 'lucide-react';
 import { Routine, ExerciseDefinition } from '../types';
@@ -6,10 +6,15 @@ import { Routine, ExerciseDefinition } from '../types';
 export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: () => void }) {
   const { state, dispatch } = useAppStore();
   
-  const [name, setName] = useState('');
-  const [schedule, setSchedule] = useState<number[]>([]);
-  const [isRestDay, setIsRestDay] = useState(false);
-  const [exercises, setExercises] = useState<ExerciseDefinition[]>([]);
+  const existingRoutine = useMemo(() => {
+    if (!routineId) return null;
+    return state.routines.find((r) => String(r.id) === String(routineId)) || null;
+  }, [routineId, state.routines]);
+
+  const [name, setName] = useState(() => existingRoutine?.name || '');
+  const [schedule, setSchedule] = useState<number[]>(() => existingRoutine?.schedule || []);
+  const [isRestDay, setIsRestDay] = useState(() => existingRoutine?.isRestDay || false);
+  const [exercises, setExercises] = useState<ExerciseDefinition[]>(() => existingRoutine?.exercises || []);
   
   const [isJsonMode, setIsJsonMode] = useState(false);
   const [jsonString, setJsonString] = useState('');
@@ -18,16 +23,13 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   useEffect(() => {
-    if (routineId) {
-      const routine = state.routines.find((r) => r.id === routineId);
-      if (routine) {
-        setName(routine.name);
-        setSchedule(routine.schedule || []);
-        setIsRestDay(routine.isRestDay || false);
-        setExercises(routine.exercises);
-      }
+    if (existingRoutine) {
+      setName(existingRoutine.name);
+      setSchedule(existingRoutine.schedule || []);
+      setIsRestDay(existingRoutine.isRestDay || false);
+      setExercises(existingRoutine.exercises || []);
     }
-  }, [routineId, state.routines]);
+  }, [existingRoutine]);
 
   const toggleDay = (dayIndex: number) => {
     setSchedule(prev => prev.includes(dayIndex) ? prev.filter(d => d !== dayIndex) : [...prev, dayIndex]);
