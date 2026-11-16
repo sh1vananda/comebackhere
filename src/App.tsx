@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useAppStore } from './store';
 import { Home } from './views/Home';
 import { Plans } from './views/Plans';
@@ -13,8 +14,10 @@ import { DEFAULT_ROUTINES } from './lib/defaults';
 
 export default function App() {
   const { state, dispatch } = useAppStore();
-  const [currentView, setCurrentView] = useState('home');
-  const [navPayload, setNavPayload] = useState<any>(null);
+  const [navigation, setNavigation] = useState<{ view: string; payload?: any }>({
+    view: 'home',
+    payload: null,
+  });
   const [authLoading, setAuthLoading] = useState(true);
   const loadingUserIdRef = useRef<string | null>(null);
 
@@ -123,22 +126,26 @@ export default function App() {
 
   const navigate = (view: string, payload?: any) => {
     const update = () => {
-      setNavPayload(payload !== undefined ? payload : null);
-      setCurrentView(view);
+      setNavigation({
+        view,
+        payload: payload !== undefined ? payload : null,
+      });
       window.scrollTo(0, 0);
     };
 
     if (document.startViewTransition) {
       document.startViewTransition(() => {
-        update();
+        flushSync(() => {
+          update();
+        });
       });
     } else {
       update();
     }
   };
 
-  let renderedView = currentView;
-  if (state.activeSession && currentView !== 'session') {
+  const renderedView = navigation.view;
+  if (state.activeSession && navigation.view !== 'session') {
      // Optional: force user into session, or let them navigate away but keep the banner.
   }
 
@@ -154,6 +161,11 @@ export default function App() {
     );
   }
 
+  const effectiveRoutineId =
+    navigation.payload?.routineId ||
+    navigation.payload?.routine?.id ||
+    (typeof navigation.payload === 'string' ? navigation.payload : undefined);
+
   return (
     <div className="w-full h-[100dvh] relative flex flex-col bg-bg overflow-hidden">
       
@@ -164,8 +176,10 @@ export default function App() {
           {renderedView === 'plans' && <Plans onNavigate={navigate} />}
           {renderedView === 'plan_editor' && (
             <PlanEditor 
-              key={navPayload?.routineId || (typeof navPayload === 'string' ? navPayload : 'new')}
-              routineId={navPayload?.routineId || (typeof navPayload === 'string' ? navPayload : undefined)} 
+              key={effectiveRoutineId || 'new'}
+              routineId={effectiveRoutineId} 
+              initialRoutine={navigation.payload?.routine}
+              initialName={navigation.payload?.name}
               onBack={() => navigate('plans')} 
             />
           )}
@@ -175,7 +189,7 @@ export default function App() {
          </div>
       </div>
 
-      <Navigation currentView={currentView} onChangeView={navigate} />
+      <Navigation currentView={navigation.view} onChangeView={navigate} />
     </div>
   );
 }

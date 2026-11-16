@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useAppStore } from '../store';
 import { Play, ChevronRight, Flame, LogOut } from 'lucide-react';
 
 export function Home({ onNavigate }: { onNavigate: (view: string, payload?: any) => void }) {
   const { state, dispatch } = useAppStore();
   const routines = state.routines;
+  const [quickPlanText, setQuickPlanText] = useState('');
   
   const today = new Date().getDay(); // 0 is Sunday
   const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -122,10 +124,26 @@ export function Home({ onNavigate }: { onNavigate: (view: string, payload?: any)
         {/* Input Entry Field */}
         <div className="mt-6 pt-6 border-t border-panel">
           <div className="flex gap-2 bg-surface2 p-2 rounded-2xl border border-panel-dark">
-            <input type="text" placeholder="Enter custom plan..." className="bg-transparent flex-1 px-3 outline-none text-sm text-tx placeholder:text-muted" onKeyDown={(e) => {
-               if(e.key === 'Enter') onNavigate('plan_editor'); // Quick redirect to plan builder
-            }} />
-            <button onClick={() => onNavigate('plan_editor')} className="w-10 h-10 bg-accent text-bg rounded-xl flex items-center justify-center shrink-0">
+            <input 
+              type="text" 
+              placeholder="Enter custom plan..." 
+              value={quickPlanText}
+              onChange={(e) => setQuickPlanText(e.target.value)}
+              className="bg-transparent flex-1 px-3 outline-none text-sm text-tx placeholder:text-muted" 
+              onKeyDown={(e) => {
+                 if(e.key === 'Enter') {
+                   onNavigate('plan_editor', { name: quickPlanText.trim() });
+                   setQuickPlanText('');
+                 }
+              }} 
+            />
+            <button 
+              onClick={() => {
+                onNavigate('plan_editor', { name: quickPlanText.trim() });
+                setQuickPlanText('');
+              }} 
+              className="w-10 h-10 bg-accent text-bg rounded-xl flex items-center justify-center shrink-0"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
             </button>
           </div>

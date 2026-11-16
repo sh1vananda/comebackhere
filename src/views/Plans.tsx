@@ -204,8 +204,12 @@ export function Plans({ onNavigate }: { onNavigate: (view: string, payload?: any
                    </div>
                 </div>
                 <button 
-                  onClick={() => onNavigate('plan_editor', { routineId: r.id })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNavigate('plan_editor', { routineId: r.id, routine: r });
+                  }}
                   className="p-1.5 text-muted hover:text-tx hover:bg-panel rounded-md transition-colors"
+                  title="Configure Plan"
                 >
                    <Settings2 size={18} />
                 </button>

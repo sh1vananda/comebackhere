@@ -3,15 +3,29 @@ import { useAppStore } from '../store';
 import { ArrowLeft, Trash2, Plus, Download, Upload, Code, LayoutTemplate } from 'lucide-react';
 import { Routine, ExerciseDefinition } from '../types';
 
-export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: () => void }) {
+export function PlanEditor({ 
+  routineId, 
+  initialRoutine,
+  initialName,
+  onBack 
+}: { 
+  key?: React.Key;
+  routineId?: string; 
+  initialRoutine?: Routine;
+  initialName?: string;
+  onBack: () => void;
+}) {
   const { state, dispatch } = useAppStore();
   
-  const existingRoutine = useMemo(() => {
-    if (!routineId) return null;
-    return state.routines.find((r) => String(r.id) === String(routineId)) || null;
-  }, [routineId, state.routines]);
+  const effectiveRoutineId = routineId || initialRoutine?.id;
 
-  const [name, setName] = useState(() => existingRoutine?.name || '');
+  const existingRoutine = useMemo(() => {
+    if (initialRoutine) return initialRoutine;
+    if (!effectiveRoutineId) return null;
+    return state.routines.find((r) => String(r.id) === String(effectiveRoutineId)) || null;
+  }, [initialRoutine, effectiveRoutineId, state.routines]);
+
+  const [name, setName] = useState(() => existingRoutine?.name || initialName || '');
   const [schedule, setSchedule] = useState<number[]>(() => existingRoutine?.schedule || []);
   const [isRestDay, setIsRestDay] = useState(() => existingRoutine?.isRestDay || false);
   const [exercises, setExercises] = useState<ExerciseDefinition[]>(() => existingRoutine?.exercises || []);
@@ -167,15 +181,17 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
     if (!finalName.trim()) return alert("Plan needs a name");
     if (finalExercises.some(e => !e.name.trim())) return alert("All exercises need a name");
 
+    const finalId = effectiveRoutineId || crypto.randomUUID();
+
     const payload: Routine = {
-       id: routineId || crypto.randomUUID(),
+       id: finalId,
        name: finalName.trim(),
        schedule: finalSchedule,
        isRestDay: finalIsRestDay,
        exercises: finalExercises
     };
 
-    if (routineId) {
+    if (effectiveRoutineId) {
        dispatch({ type: 'UPDATE_ROUTINE', payload });
     } else {
        dispatch({ type: 'ADD_ROUTINE', payload });
@@ -185,7 +201,9 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
 
   const handleDelete = () => {
      if(confirm("Delete this plan?")) {
-        dispatch({ type: 'DELETE_ROUTINE', payload: routineId });
+        if (effectiveRoutineId) {
+          dispatch({ type: 'DELETE_ROUTINE', payload: effectiveRoutineId });
+        }
         onBack();
      }
   };
@@ -199,7 +217,7 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
            <button onClick={onBack} className="p-2 -ml-2 text-muted hover:text-tx">
              <ArrowLeft size={20} />
            </button>
-           <h1 className="text-2xl font-serif italic tracking-tight">{routineId ? 'Edit Plan' : 'New Plan'}</h1>
+           <h1 className="text-2xl font-serif italic tracking-tight">{effectiveRoutineId ? 'Edit Plan' : 'New Plan'}</h1>
         </div>
         <div className="flex items-center gap-2">
            <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleImport} />
@@ -381,7 +399,7 @@ export function PlanEditor({ routineId, onBack }: { routineId?: string, onBack: 
          </>
       )}
 
-      {routineId && !isJsonMode && (
+      {effectiveRoutineId && !isJsonMode && (
          <div className="pt-8">
             <button onClick={handleDelete} className="w-full bg-danger/10 text-danger border border-danger/20 py-3 rounded-xl font-medium text-sm active:scale-[0.98] transition-transform">
                Delete Plan
