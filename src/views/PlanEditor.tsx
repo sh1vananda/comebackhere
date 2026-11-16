@@ -5,25 +5,40 @@ import { Routine, ExerciseDefinition } from '../types';
 
 export function PlanEditor({ 
   routineId, 
+  routineIndex,
   initialRoutine,
   initialName,
   onBack 
 }: { 
   key?: React.Key;
   routineId?: string; 
+  routineIndex?: number;
   initialRoutine?: Routine;
   initialName?: string;
   onBack: () => void;
 }) {
   const { state, dispatch } = useAppStore();
   
-  const effectiveRoutineId = routineId || initialRoutine?.id;
-
   const existingRoutine = useMemo(() => {
     if (initialRoutine) return initialRoutine;
-    if (!effectiveRoutineId) return null;
-    return state.routines.find((r) => String(r.id) === String(effectiveRoutineId)) || null;
-  }, [initialRoutine, effectiveRoutineId, state.routines]);
+    if (routineId) {
+      const found = state.routines.find((r) => String(r.id) === String(routineId));
+      if (found) return found;
+    }
+    if (routineIndex !== undefined && routineIndex >= 0 && state.routines[routineIndex]) {
+      return state.routines[routineIndex];
+    }
+    return null;
+  }, [initialRoutine, routineId, routineIndex, state.routines]);
+
+  const isEditing = Boolean(
+    initialRoutine || 
+    routineId || 
+    (routineIndex !== undefined && routineIndex >= 0) || 
+    existingRoutine
+  );
+
+  const effectiveRoutineId = routineId || existingRoutine?.id || (routineIndex !== undefined && state.routines[routineIndex]?.id);
 
   const [name, setName] = useState(() => existingRoutine?.name || initialName || '');
   const [schedule, setSchedule] = useState<number[]>(() => existingRoutine?.schedule || []);
@@ -181,7 +196,7 @@ export function PlanEditor({
     if (!finalName.trim()) return alert("Plan needs a name");
     if (finalExercises.some(e => !e.name.trim())) return alert("All exercises need a name");
 
-    const finalId = effectiveRoutineId || crypto.randomUUID();
+    const finalId = effectiveRoutineId || existingRoutine?.id || crypto.randomUUID();
 
     const payload: Routine = {
        id: finalId,
@@ -191,8 +206,14 @@ export function PlanEditor({
        exercises: finalExercises
     };
 
-    if (effectiveRoutineId) {
-       dispatch({ type: 'UPDATE_ROUTINE', payload });
+    if (isEditing) {
+       dispatch({ 
+         type: 'UPDATE_ROUTINE', 
+         payload,
+         targetId: effectiveRoutineId || existingRoutine?.id,
+         index: routineIndex,
+         originalName: existingRoutine?.name
+       });
     } else {
        dispatch({ type: 'ADD_ROUTINE', payload });
     }
@@ -201,8 +222,14 @@ export function PlanEditor({
 
   const handleDelete = () => {
      if(confirm("Delete this plan?")) {
-        if (effectiveRoutineId) {
-          dispatch({ type: 'DELETE_ROUTINE', payload: effectiveRoutineId });
+        if (isEditing) {
+          dispatch({ 
+            type: 'DELETE_ROUTINE', 
+            payload: effectiveRoutineId || existingRoutine?.id,
+            targetId: effectiveRoutineId || existingRoutine?.id,
+            index: routineIndex,
+            name: existingRoutine?.name
+          });
         }
         onBack();
      }
@@ -217,7 +244,7 @@ export function PlanEditor({
            <button onClick={onBack} className="p-2 -ml-2 text-muted hover:text-tx">
              <ArrowLeft size={20} />
            </button>
-           <h1 className="text-2xl font-serif italic tracking-tight">{effectiveRoutineId ? 'Edit Plan' : 'New Plan'}</h1>
+           <h1 className="text-2xl font-serif italic tracking-tight">{isEditing ? 'Edit Plan' : 'New Plan'}</h1>
         </div>
         <div className="flex items-center gap-2">
            <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleImport} />
@@ -254,7 +281,7 @@ export function PlanEditor({
             <div>
                <label className="text-xs text-muted uppercase tracking-wider font-semibold mb-1 block">Plan Name</label>
                <input 
-                  autoFocus={!routineId}
+                  autoFocus={!isEditing}
                   type="text" 
                   placeholder="e.g. Upper Body Power"
                   value={name}
@@ -399,7 +426,7 @@ export function PlanEditor({
          </>
       )}
 
-      {effectiveRoutineId && !isJsonMode && (
+      {isEditing && !isJsonMode && (
          <div className="pt-8">
             <button onClick={handleDelete} className="w-full bg-danger/10 text-danger border border-danger/20 py-3 rounded-xl font-medium text-sm active:scale-[0.98] transition-transform">
                Delete Plan

@@ -26,14 +26,17 @@ export function Plans({ onNavigate }: { onNavigate: (view: string, payload?: any
            if (!Array.isArray(parsed)) throw new Error("Must be an array");
            
            // Restore histories
-           const restoredRoutines = parsed.map((parsedR: any) => {
-              const origR = routines.find(r => r.id === parsedR.id);
+           const restoredRoutines = parsed.map((parsedR: any, idx: number) => {
+              const stableId = parsedR.id || (parsedR.name ? `routine_${parsedR.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${idx}` : `routine_${idx}`);
+              const origR = routines.find(r => r.id === stableId || r.name === parsedR.name);
               return {
                  ...parsedR,
-                 exercises: (parsedR.exercises || []).map((parsedEx: any) => {
-                    const origEx = origR?.exercises.find(e => e.id === parsedEx.id);
+                 id: stableId,
+                 exercises: (parsedR.exercises || []).map((parsedEx: any, exIdx: number) => {
+                    const origEx = origR?.exercises.find(e => e.id === parsedEx.id || e.name === parsedEx.name);
                     return {
                        ...parsedEx,
+                       id: parsedEx.id || `ex_${stableId}_${exIdx}`,
                        history: origEx ? origEx.history : []
                     };
                  })
@@ -131,14 +134,17 @@ export function Plans({ onNavigate }: { onNavigate: (view: string, payload?: any
            const parsed = JSON.parse(jsonString);
            if (!Array.isArray(parsed)) throw new Error("Must be an array");
            
-           const restoredRoutines = parsed.map((parsedR: any) => {
-              const origR = routines.find(r => r.id === parsedR.id);
+           const restoredRoutines = parsed.map((parsedR: any, idx: number) => {
+              const stableId = parsedR.id || (parsedR.name ? `routine_${parsedR.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${idx}` : `routine_${idx}`);
+              const origR = routines.find(r => r.id === stableId || r.name === parsedR.name);
               return {
                  ...parsedR,
-                 exercises: (parsedR.exercises || []).map((parsedEx: any) => {
-                    const origEx = origR?.exercises.find(e => e.id === parsedEx.id);
+                 id: stableId,
+                 exercises: (parsedR.exercises || []).map((parsedEx: any, exIdx: number) => {
+                    const origEx = origR?.exercises.find(e => e.id === parsedEx.id || e.name === parsedEx.name);
                     return {
                        ...parsedEx,
+                       id: parsedEx.id || `ex_${stableId}_${exIdx}`,
                        history: origEx ? origEx.history : []
                     };
                  })
@@ -194,26 +200,43 @@ export function Plans({ onNavigate }: { onNavigate: (view: string, payload?: any
          </div>
       ) : (
       <div className="columns-1 md:columns-2 lg:columns-3 gap-3">
-        {routines.map((r) => (
-          <div key={r.id} className="bg-surface border border-panel rounded-2xl p-5 shadow-sm break-inside-avoid mb-3">
-             <div className="flex justify-between items-start mb-4">
-                <div>
-                   <h2 className="font-serif italic text-2xl">{r.name}</h2>
-                   <div className="text-xs text-muted font-mono mt-1">
-                      {r.exercises.length} exercises · {r.exercises.reduce((a,e)=>a+e.sets,0)} total sets
-                   </div>
-                </div>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onNavigate('plan_editor', { routineId: r.id, routine: r });
-                  }}
-                  className="p-1.5 text-muted hover:text-tx hover:bg-panel rounded-md transition-colors"
-                  title="Configure Plan"
-                >
-                   <Settings2 size={18} />
-                </button>
-             </div>
+        {routines.map((r, index) => {
+          const routineId = r.id || `routine_${index}`;
+          const routineWithId = { ...r, id: routineId };
+
+          return (
+            <div key={routineId} className="bg-surface border border-panel rounded-2xl p-5 shadow-sm break-inside-avoid mb-3">
+               <div className="flex justify-between items-start mb-4">
+                  <div>
+                     <h2 
+                       onClick={() => onNavigate('plan_editor', { 
+                         routineId, 
+                         routine: routineWithId,
+                         routineIndex: index 
+                       })}
+                       className="font-serif italic text-2xl cursor-pointer hover:text-accent transition-colors"
+                     >
+                        {r.name}
+                     </h2>
+                     <div className="text-xs text-muted font-mono mt-1">
+                        {r.exercises.length} exercises · {r.exercises.reduce((a,e)=>a+e.sets,0)} total sets
+                     </div>
+                  </div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onNavigate('plan_editor', { 
+                        routineId, 
+                        routine: routineWithId,
+                        routineIndex: index 
+                      });
+                    }}
+                    className="p-1.5 text-muted hover:text-tx hover:bg-panel rounded-md transition-colors"
+                    title="Configure Plan"
+                  >
+                     <Settings2 size={18} />
+                  </button>
+               </div>
              
              {/* Schedule row */}
              <div className="flex items-center gap-2 mb-4">
@@ -252,7 +275,8 @@ export function Plans({ onNavigate }: { onNavigate: (view: string, payload?: any
                  ))}
              </div>
           </div>
-        ))}
+          );
+        })}
 
         {routines.length === 0 && (
            <div className="text-center p-8 border border-panel border-dashed rounded-xl mt-4">

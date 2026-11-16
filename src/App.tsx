@@ -165,6 +165,7 @@ export default function App() {
     navigation.payload?.routineId ||
     navigation.payload?.routine?.id ||
     (typeof navigation.payload === 'string' ? navigation.payload : undefined);
+  const effectiveRoutineIndex = navigation.payload?.routineIndex;
 
   return (
     <div className="w-full h-[100dvh] relative flex flex-col bg-bg overflow-hidden">
@@ -176,8 +177,9 @@ export default function App() {
           {renderedView === 'plans' && <Plans onNavigate={navigate} />}
           {renderedView === 'plan_editor' && (
             <PlanEditor 
-              key={effectiveRoutineId || 'new'}
+              key={effectiveRoutineId ? `id_${effectiveRoutineId}` : (effectiveRoutineIndex !== undefined ? `idx_${effectiveRoutineIndex}` : 'new')}
               routineId={effectiveRoutineId} 
+              routineIndex={effectiveRoutineIndex}
               initialRoutine={navigation.payload?.routine}
               initialName={navigation.payload?.name}
               onBack={() => navigate('plans')} 

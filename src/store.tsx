@@ -29,8 +29,35 @@ export const StoreContext = createContext<StoreContextType | undefined>(
 
 const STORAGE_KEY = "comebackhere_state";
 
+export function normalizeRoutine(r: any, idx = 0): Routine {
+  const stableId = (r.id && String(r.id).trim().length > 0) 
+    ? String(r.id) 
+    : (r.name ? `routine_${r.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${idx}` : `routine_${Date.now()}_${idx}`);
+
+  return {
+    ...r,
+    id: stableId,
+    name: r.name || 'Untitled Plan',
+    schedule: Array.isArray(r.schedule) ? r.schedule : [],
+    isRestDay: !!r.isRestDay,
+    exercises: Array.isArray(r.exercises) ? r.exercises.map((ex: any, exIdx: number) => ({
+      ...ex,
+      id: ex.id ? String(ex.id) : `ex_${stableId}_${exIdx}`,
+      name: ex.name || '',
+      sets: typeof ex.sets === 'number' ? ex.sets : 3,
+      reps: typeof ex.reps === 'number' ? ex.reps : 10,
+      targetKg: typeof ex.targetKg === 'number' ? ex.targetKg : 20,
+      isTime: !!ex.isTime,
+      tempo: ex.tempo || '',
+      notes: ex.notes || '',
+      restTime: typeof ex.restTime === 'number' ? ex.restTime : 90,
+      history: Array.isArray(ex.history) ? ex.history : []
+    })) : []
+  };
+}
+
 const initialState: AppState = {
-  routines: DEFAULT_ROUTINES,
+  routines: DEFAULT_ROUTINES.map((r, i) => normalizeRoutine(r, i)),
   history: [],
   activeSession: null,
   streak: 0,
@@ -131,9 +158,13 @@ function loadState(): AppState {
     if (saved) {
       const parsed = JSON.parse(saved);
       const { user, ...cleanSaved } = parsed || {};
+      const routines = cleanSaved.routines 
+        ? cleanSaved.routines.map((r: any, i: number) => normalizeRoutine(r, i)) 
+        : DEFAULT_ROUTINES.map((r, i) => normalizeRoutine(r, i));
       return { 
         ...initialState, 
         ...cleanSaved, 
+        routines,
         user: null, 
         isLoadingData: true, 
         hasLoadedFromSupabase: false, 
@@ -177,11 +208,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           return { ...prev, user: action.payload, isLoadingData: true, hasLoadedFromSupabase: false };
         case "LOAD_DATA": {
           const { user, isLoadingData, hasLoadedFromSupabase, isFirstLoad, ...restData } = action.payload || {};
-          return { ...prev, ...restData, isLoadingData: false, hasLoadedFromSupabase: true, isFirstLoad: false };
+          const routines = restData.routines 
+            ? restData.routines.map((r: any, i: number) => normalizeRoutine(r, i)) 
+            : prev.routines;
+          return { ...prev, ...restData, routines, isLoadingData: false, hasLoadedFromSupabase: true, isFirstLoad: false };
         }
         case "LOAD_DATA_OFFLINE": {
           const { user, isLoadingData, hasLoadedFromSupabase, isFirstLoad, ...restData } = action.payload || {};
-          return { ...prev, ...restData, isLoadingData: false, hasLoadedFromSupabase: false, isFirstLoad: false };
+          const routines = restData.routines 
+            ? restData.routines.map((r: any, i: number) => normalizeRoutine(r, i)) 
+            : prev.routines;
+          return { ...prev, ...restData, routines, isLoadingData: false, hasLoadedFromSupabase: false, isFirstLoad: false };
         }
         case "LOGOUT":
           try {
@@ -189,21 +226,62 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           } catch (e) {}
           return { ...initialState, isFirstLoad: false, isLoadingData: false, hasLoadedFromSupabase: false };
         case "SET_ROUTINES":
-          return { ...prev, routines: action.payload };
+          return { ...prev, routines: action.payload.map((r: any, i: number) => normalizeRoutine(r, i)) };
         case "ADD_ROUTINE":
-          return { ...prev, routines: [...prev.routines, action.payload] };
-        case "UPDATE_ROUTINE":
+          return { ...prev, routines: [...prev.routines, normalizeRoutine(action.payload, prev.routines.length)] };
+        case "UPDATE_ROUTINE": {
+          const targetPayload = action.payload;
+          const targetIndex = action.index;
+          const targetId = action.targetId || targetPayload?.id;
+          const originalName = action.originalName;
+          let hasUpdated = false;
+          const updatedRoutines = prev.routines.map((r, idx) => {
+            const isMatch = (targetIndex !== undefined && idx === targetIndex) ||
+                            (targetId && (r.id === targetId || String(r.id) === String(targetId))) ||
+                            (originalName && r.name === originalName);
+            if (isMatch && !hasUpdated) {
+              hasUpdated = true;
+              const stableId = r.id || targetId || targetPayload.id || `routine_${idx}`;
+              return normalizeRoutine({
+                ...targetPayload,
+                id: stableId,
+              }, idx);
+            }
+            return r;
+          });
+
+          if (hasUpdated) {
+            return {
+              ...prev,
+              routines: updatedRoutines,
+            };
+          }
+
           return {
             ...prev,
-            routines: prev.routines.map((r) =>
-              r.id === action.payload.id ? action.payload : r,
-            ),
+            routines: [...prev.routines, normalizeRoutine(targetPayload, prev.routines.length)],
           };
-        case "DELETE_ROUTINE":
+        }
+        case "DELETE_ROUTINE": {
+          const targetId = action.targetId || (typeof action.payload === 'string' ? action.payload : action.payload?.id);
+          const targetIndex = action.index;
+          const targetName = action.name || action.originalName;
+          let hasDeleted = false;
           return {
             ...prev,
-            routines: prev.routines.filter((r) => r.id !== action.payload),
+            routines: prev.routines.filter((r, idx) => {
+              if (hasDeleted) return true;
+              const isMatch = (targetIndex !== undefined && idx === targetIndex) ||
+                              (targetId && (r.id === targetId || String(r.id) === String(targetId))) ||
+                              (targetName && r.name === targetName);
+              if (isMatch) {
+                hasDeleted = true;
+                return false;
+              }
+              return true;
+            }),
           };
+        }
         case "ADD_FOOD": {
           const { date, item } = action.payload;
           return {
